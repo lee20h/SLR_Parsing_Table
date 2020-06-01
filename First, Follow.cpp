@@ -3,90 +3,109 @@
 #include<iostream>
 #include<ctype.h>  // isupper()
 #include<string.h> 
+#include<vector>
+#include<fstream>
 using namespace std;
   
 // Functions to calculate Follow 
-void followfirst(char, int, int); 
+void followfirst(char c, int c1, int c2); 
 void follow(char c); 
   
 // Function to calculate First 
-void findfirst(char, int, int); 
+void findfirst(char c, int q1, int q2, int cycle); 
   
-int count, n = 0; // input grammar
+int cnt, n = 0; // input grammar
   
 // Stores the final result  
 // of the First Sets 
-char calc_first[10][100]; 
+char calc_first[100][100]; 
   
 // Stores the final result 
 // of the Follow Sets 
-char calc_follow[10][100]; 
+char calc_follow[100][100]; 
 int m = 0; 
   
 // Stores the production rules 
-char production[10][10]; 
-char f[10], first[10]; 
-int k; 
+string production[100];
+char f[100], first[100]; 
 char ck; 
-int e; 
   
 int main() { 
     int jm = 0; 
     int km = 0; 
-    int i, choice; 
-    char c, ch; 
-    count = 8; // input grammar
-      
+    char c; 
+    ifstream file;
+    file.open("input.txt");
+    if(file.is_open()) {
+    	while(!file.eof()) {
+    		string str, temp;
+    		getline(file,str);
+			bool flag = false;
+			for (int i=0; i<str.length(); i++) {
+				if(str[i] == ' ' || str[i] == '\t' || str[i] == '\v') { // tab exception
+					str = str.substr(0,i) + str.substr(i+1);
+				}
+			}
+			for (int i=4; i<str.length(); i++) {
+				if(str[i] == 'i' && str[i+1] == 'd') { // id -> i
+					str = str.substr(0,i+1) + str.substr(i+2);
+				}
+				
+				else if(str[i] == '|') { // || separator
+					temp = str[0];
+					temp += "==>" + str.substr(i+2);
+					
+					str = str.substr(0,i);
+					production[cnt++] = str;
+					production[cnt++] = temp;
+					flag = true;
+					break;
+				}
+			}
+			if(!flag) {
+				production[cnt++] = str;
+			}
+		}
+	}
+	file.close();
     // The Input grammar 
-    strcpy(production[0], "E->TR"); 
-    strcpy(production[1], "R->+TR"); 
-    strcpy(production[2], "R->_"); 
-    strcpy(production[3], "T->FY"); 
-    strcpy(production[4], "Y->*FY"); 
-    strcpy(production[5], "Y->_"); 
-    strcpy(production[6], "F->(E)"); 
-    strcpy(production[7], "F->i"); 
-      
-    int kay; 
-    char done[count]; 
+    char done[10]; 
     int ptr = -1; 
-      
     // Initializing the calc_first array 
-    for(k = 0; k < count; k++) { 
-        for(kay = 0; kay < 100; kay++) { 
+    for(int k = 0; k < cnt; k++) { 
+        for(int kay = 0; kay < 100; kay++) { 
             calc_first[k][kay] = '!'; 
         } 
     } 
     int point1 = 0, point2, xxx; 
-      
-    for(k = 0; k < count; k++) { 
+	
+    for(int k = 0; k < cnt; k++) { 
         c = production[k][0]; 
         point2 = 0; 
         xxx = 0; 
           
         // Checking if First of c has 
         // already been calculated 
-        for(kay = 0; kay <= ptr; kay++) 
+        for(int kay = 0; kay <= ptr; kay++) 
             if(c == done[kay]) 
                 xxx = 1; 
                   
         if (xxx == 1) 
             continue; 
-          
+            
         // Function call     
-        findfirst(c, 0, 0); 
-        ptr += 1; 
+        findfirst(c, 0, 0, 0); 
           
         // Adding c to the calculated list 
-        done[ptr] = c; 
-        printf("\n First(%c) = { ", c); 
+        done[++ptr] = c; 
+        cout << "\n First(" << c << ") = { "; 
         calc_first[point1][point2++] = c; 
           
         // Printing the First Sets of the grammar 
-        for(i = 0 + jm; i < n; i++) { 
-            int lark = 0, chk = 0; 
+        for(int i = 0 + jm; i < n; i++) { 
+            int chk = 0; 
               
-            for(lark = 0; lark < point2; lark++) { 
+            for(int lark = 0; lark < point2; lark++) { 
                   
                 if (first[i] == calc_first[point1][lark]) { 
                     chk = 1; 
@@ -94,66 +113,65 @@ int main() {
                 } 
             } 
             if(chk == 0) { 
-                printf("%c, ", first[i]); 
+            	if(first[i] == 'i') cout << "id" << ' '; // i -> id
+                else cout << first[i] << ' ';
                 calc_first[point1][point2++] = first[i]; 
             } 
         } 
-        printf("}\n"); 
+        cout << "}\n"; 
         jm = n; 
         point1++; 
     } 
-    printf("\n"); 
-    printf("-----------------------------------------------\n\n"); 
-    char donee[count]; 
+    cout << '\n';
+    
+    char donee[10]; 
     ptr = -1; 
-      
+    
     // Initializing the calc_follow array 
-    for(k = 0; k < count; k++) { 
-        for(kay = 0; kay < 100; kay++) { 
+    for(int k = 0; k < cnt; k++) { 
+        for(int kay = 0; kay < 100; kay++) { 
             calc_follow[k][kay] = '!'; 
         } 
     } 
     point1 = 0; 
-    int land = 0; 
-    for(e = 0; e < count; e++) { 
+    for(int e = 0; e < cnt; e++) { 
         ck = production[e][0];
         point2 = 0; 
         xxx = 0; 
           
         // Checking if Follow of ck 
         // has alredy been calculated 
-        for(kay = 0; kay <= ptr; kay++) 
+        for(int kay = 0; kay <= ptr; kay++) 
             if(ck == donee[kay]) 
                 xxx = 1; 
                   
         if (xxx == 1) 
             continue; 
-        land += 1; 
           
         // Function call 
         follow(ck); 
-        ptr += 1; 
           
         // Adding ck to the calculated list 
-        donee[ptr] = ck; 
-        printf(" Follow(%c) = { ", ck); 
+        donee[++ptr] = ck; 
+        cout << " Follow(" << ck << ") = { ";
         calc_follow[point1][point2++] = ck; 
           
         // Printing the Follow Sets of the grammar 
-        for(i = 0 + km; i < m; i++) { 
-            int lark = 0, chk = 0; 
-            for(lark = 0; lark < point2; lark++)  { 
+        for(int i = 0 + km; i < m; i++) { 
+            int chk = 0; 
+            for(int lark = 0; lark < point2; lark++)  { 
                 if (f[i] == calc_follow[point1][lark]) { 
                     chk = 1; 
                     break; 
                 } 
             } 
             if(chk == 0) { 
-                printf("%c, ", f[i]); 
+            	if(f[i] == 'i') cout << "id" << ' '; // i -> id
+                else cout << f[i] << ' ';
                 calc_follow[point1][point2++] = f[i]; 
             } 
         } 
-        printf(" }\n\n"); 
+        cout << "}\n\n";
         km = m; 
         point1++;  
     } 
@@ -165,13 +183,13 @@ void follow(char c) {
     if(production[0][0] == c) {
         f[m++] = '$'; 
     } 
-    for(int i = 0; i < 10; i++) { 
-        for(int j = 3; j < 10; j++) { 
+    for(int i = 0; i < cnt; i++) { 
+        for(int j = 4; j < production[i].length(); j++) { 
             if(production[i][j] == c) {
                 if(production[i][j+1] != '\0') { 
                     // Calculate the first of the next 
                     // Non-Terminal in the production 
-                    followfirst(production[i][j+1], i, (j+2)); 
+                    followfirst(production[i][j+1], i, j+2); 
                 } 
                   
                 if(production[i][j+1]=='\0' && c!=production[i][0]) { 
@@ -188,10 +206,10 @@ void followfirst(char c, int c1, int c2) {
     // The case where we encounter 
     // a Terminal 
     if(!(isupper(c))) 
-        f[m++] = c; 
+        f[m++] = c;
     else{ 
         int i = 0, j = 1; 
-        for(i = 0; i < count; i++) { 
+        for(i = 0; i < cnt; i++) { 
             if(calc_first[i][0] == c) 
                 break; 
         }
@@ -222,36 +240,35 @@ void followfirst(char c, int c1, int c2) {
     } 
 }
 
-void findfirst(char c, int q1, int q2) 
+void findfirst(char c, int q1, int q2, int cycle) 
 { 
-    int j; 
-      
     // The case where we  
     // encounter a Terminal 
     if(!(isupper(c))) { 
         first[n++] = c; 
-    } 
-    for(j = 0; j < count; j++) { 
+    }
+    for(int j = cycle; j < cnt; j++) { 
         if(production[j][0] == c) { 
-            if(production[j][3] == '_') { 
+            if(production[j][4] == '_') { // 1~3 index '==>'
                 if(production[q1][q2] == '\0') 
                     first[n++] = '_'; 
-                else if(production[q1][q2] != '\0'  && (q1 != 0 || q2 != 0)) { 
+                else if(production[q1][q2] != '\0' && (q1 != 0 || q2 != 0)) { 
                     // Recursion to calculate First of New 
                     // Non-Terminal we encounter after epsilon 
-                    findfirst(production[q1][q2], q1, (q2+1)); 
+                    findfirst(production[q1][q2], q1, (q2+1), j); 
                 } 
                 else
                     first[n++] = '_'; 
             } 
-            else if(!isupper(production[j][3])) { 
-                first[n++] = production[j][3]; 
+            else if(!isupper(production[j][4])) { 
+                first[n++] = production[j][4]; 
             } 
             else { 
                 // Recursion to calculate First of 
                 // New Non-Terminal we encounter  
-                // at the beginning 
-                findfirst(production[j][3], j, 3); 
+                // at the beginning
+                
+                findfirst(production[j][4], j, 5, cycle+1);
             } 
         } 
     }  
