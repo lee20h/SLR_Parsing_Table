@@ -1,429 +1,533 @@
-#include<iostream>
-#include<string.h>
-#include<stdlib.h>
-#include<stdio.h>
-#include<ctype.h>
+// 201610674 컴퓨터공하부 이영훈 
+#include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
+#define EPSILON '_'
 
-using namespace std;
+#define MAX 30
 
-char terminals[100]={};
-int no_t;
-char non_terminals[100]={};
-int no_nt;
-char goto_table[100][100];
-char reduce[20][20];
-char follow[20][20];char fo_co[20][20];
-char first[20][20];
+char lh[MAX], rh[MAX][10], s, t[10], nt[10], tnt[20], read[MAX][10], temp, templ[MAX], tempr[MAX][10], *ptr, temp2[5], slr[MAX][MAX][6];
+int i,j,k,p,n = 1, ns = 0, rr = 0,n_tnt, tn = 0, n_t, n_nt;
 
 struct state{
-    int prod_count;
-    char prod[100][100]={{}};
-};
+	char lh[MAX], rh[MAX][10];
+	int n, last;
+} I[MAX];
 
-void add_dots(struct state *I){
-    for(int i=0;i<I->prod_count;i++){
-        for (int j=99;j>3;j--)
-            I->prod[i][j] = I->prod[i][j-1];
-        I->prod[i][3]='.';
-    }
+
+char *substr(char *s, int l, int r) {
+	int len = (r - l), i;
+	char *sub = new char(len + 1);
+	for (i = 0; i < len; i++) sub[i] = s[i + l];
+	sub[len] = '\0';
+	return sub;
 }
 
-void augument(struct state *S,struct state *I){
-    if(I->prod[0][0]=='S')
-        strcpy(S->prod[0],"Z->.S");
-    else{
-        strcpy(S->prod[0],"S->.");
-        S->prod[0][4]=I->prod[0][0];}
-    S->prod_count++;
+int fine_old(struct state s1,struct state s2) 
+{ 
+	int t; 
+	if(s1.n != s2.n) 
+		return 0; 
+	if(strcmp(s1.lh,s2.lh) != 0) 
+		return 0; 
+	for(t = 0; t < s1.n; t++) 
+		if(strcmp(s1.rh[t],s2.rh[t]) != 0) 
+			return 0; 
+	return 1; 
+} 
+
+int indexOf(char ip, char symbol[]) {
+	if (ip == '$') return strlen(symbol);
+	int i;
+	for(i = 0; i < strlen(symbol); i++)
+		if(symbol[i] == ip)
+			return i;
+	return -1;
 }
 
-void get_prods(struct state *I){
-    cout<<"Enter the number of productions:\n";
-    cin>>I->prod_count;
-    cout<<"Enter the number of non terminals:"<<endl;
-    cin>>no_nt;
-    cout<<"Enter the non terminals one by one:"<<endl;
-    for(int i=0;i<no_nt;i++)
-        cin>>non_terminals[i];
-    cout<<"Enter the number of terminals:"<<endl;
-    cin>>no_t;
-    cout<<"Enter the terminals (single lettered) one by one:"<<endl;
-    for(int i=0;i<no_t;i++)
-        cin>>terminals[i];
-    cout<<"Enter the productions one by one in form (S->ABc):\n";
-    for(int i=0;i<I->prod_count;i++){
-        cin>>I->prod[i];
-    }
-}
+void closure() 
+{ 
+	int r,s,t,l1=0,rr1=0; 
+	char *ptr1,read1[MAX][10]; 
+	
+	for(r = 0; r < I[ns].n; r++) 	{ 
+		ptr1 = strchr(I[ns].rh[l1],'.'); 
+		t = ptr1 - I[ns].rh[l1]; 
+		if(t + 1 == strlen(I[ns].rh[l1])) { // A->aBb.
+			l1++; 
+			continue; 
+		} 
+		// temp = I[ns].rh[l1][t+1]; 
+		temp = I[ns].rh[r][t+1]; 
+		l1++; // l1 is useless it should be r
+		for(s = 0; s < rr1; s++) 
+			if( temp == read1[s][0] ) 
+				break; 
+		if(s == rr1) { 
+			read1[rr1][0] = temp; 
+			rr1++; 
+		} 
+		else 
+			continue; 
 
-bool in_state(struct state *I,char *a){
-    for(int i=0;i<I->prod_count;i++){
-        if(!strcmp(I->prod[i],a))
-            return true;
-    }
-    return false;
-}
+		for(s = 0; s < n; s++) { 
+			if(lh[s] == temp) { 
+				I[ns].rh[I[ns].n][0] = '.'; 
+				I[ns].rh[I[ns].n][1] = '\0'; 
+				strcat(I[ns].rh[I[ns].n],rh[s]); 
+				I[ns].lh[I[ns].n] = lh[s]; 
+				I[ns].lh[I[ns].n + 1] = '\0'; 
+				I[ns].n++; 
+			} 
+		} 
+	} 
+} 
 
-char mark_symbol(char a[100]){
-    for(int i=0;i<strlen(a);i++)
-        if(a[i]=='.'){
-            return a[i+1];
+void newstate(int l) {
+	int t1; 
+	char read1[MAX][10],rr1 = 0,*ptr1; 
+	for(i = 0; i < I[l].n; i++) 
+	{ // ith rule of state Il
+		temp2[0] = '.'; // Here temp2 is "."
+		ptr1 = strchr(I[l].rh[i],'.'); 
+		t1 = ptr1 - I[l].rh[i]; // no of chars before '.'
+		if( t1 + 1 == strlen(I[l].rh[i])) // A->aBb.
+			continue;
+		
+		temp2[1] = I[l].rh[i][t1+1]; // Here temp2 is ".B"
+		temp2[2] = '\0'; // Here temp2 is ".B\0"
+		
+		for(j = 0; j < rr1; j++) 
+			if( strcmp(temp2,read1[j]) == 0 ) 
+				break; 
+		if(j == rr1) {
+			strcpy(read1[rr1],temp2); 
+			read1[rr1][2] = '\0'; 
+			rr1++; 
+		} 
+		else 
+			continue; 
+		
+		for(j = 0; j < I[0].n; j++) {
+			ptr = strstr(I[l].rh[j],temp2); 
+			if(ptr) { 
+				templ[tn] = I[l].lh[j]; 
+				templ[tn + 1] = '\0'; 
+				strcpy(tempr[tn],I[l].rh[j]); 
+				tn++; 
+			} 
 		}
 
+	
+		for(j = 0; j < tn; j++) {//I1
+			ptr = strchr(tempr[j],'.'); 
+			p = ptr - tempr[j]; 
+			tempr[j][p] = tempr[j][p+1]; // Shift dot one position
+			tempr[j][p+1] = '.'; 
+			I[ns].lh[I[ns].n] = templ[j]; 
+			I[ns].lh[I[ns].n + 1] = '\0'; 
+			strcpy(I[ns].rh[I[ns].n],tempr[j]); 
+			I[ns].n++; 
+		} 
+		
+		closure(); // got closure of I1
+		for(j = 0; j < ns; j++) {
+			if(fine_old(I[ns],I[j]) == 1) {	// If state is old
+				I[ns].lh[0] = '\0'; // Clear the state
+				for(k = 0; k < I[ns].n; k++) 
+				I[ns].rh[k][0] = '\0'; 
+				I[ns].n = 0; 
+				k = indexOf(temp2[1],t);
+				if(k == -1){ // goto if non-terminal
+					k = indexOf(temp2[1],tnt);
+					strcpy(slr[l][k],"G");
+					sprintf(templ,"%d",j);
+					strcat(slr[l][k],templ);
+				}
+				// else shift
+				
+				else{
+					strcpy(slr[l][k],"S");
+					sprintf(templ,"%d",j);
+					strcat(slr[l][k],templ);
+				}
+				//slr[l][j] = temp2[1]; // INSERT INTO slr_table;
+				break; 
+			} 
+		} 
+		if(j < ns) {// I got old state in the previous loop
+			tn = 0; // free temp
+			for(j = 0; j < 15; j++) {
+				templ[j] = '\0'; 
+				tempr[j][0] = '\0'; 
+			} 
+			continue; 
+		} 
+		
+
+		k = indexOf(temp2[1],t);
+		if(k == -1){ // goto if non-terminal
+			k = indexOf(temp2[1],tnt);
+			
+			strcpy(slr[l][k],"G");
+			sprintf(templ,"%d",j);
+			strcat(slr[l][k],templ);
+		}
+		// else shift
+		
+		else{
+			strcpy(slr[l][k],"S");
+			sprintf(templ,"%d",j);
+			strcat(slr[l][k],templ);
+		}
+
+
+
+		printf("\n\nI%d:",ns); 
+		for(j = 0; j < I[ns].n; j++) 
+			printf("\n\t%c ==> %s",I[ns].lh[j],I[ns].rh[j]);
+		ns++; 
+		tn = 0; 
+		for(j = 0; j < 15; j++) { 
+			templ[j] = '\0'; 
+			tempr[j][0] = '\0'; 
+		} 
+	} 
+
+
+
 }
 
-void move_dot(char *b,int len){
-    for(int i=0;i<len;i++){
-        if(b[i]=='.'){
-            swap(b[i],b[i+1]);
-            break;
-        }
-    }
-}
 
-bool same_state(struct state *I0,struct state *I){
-    if (I0->prod_count != I->prod_count)
-        return false;
-    for (int i=0; i<I0->prod_count; i++) {
-        if (strcmp(I0->prod[i], I->prod[i]) != 0)
-            return false;
-    }
-    return true;
-}
 
-void closure(struct state *I,struct state *I0){
-    char a={};
-    for(int i=0;i<I0->prod_count;i++){
-        a=mark_symbol(I0->prod[i]);
-        if(isupper(a)){
-            for(int j=0;j<I->prod_count;j++){
-                if(I->prod[j][0]==a){
-                    if(!in_state(I0,I->prod[j])){
-                        strcpy(I0->prod[I0->prod_count],I->prod[j]);
-                        I0->prod_count++;
-                    }
-                }
-            }
-        }
-    }
-}
 
-void goto_state(struct state *I,struct state *S,char a){
-    int time=1;
-    for(int i=0;i<I->prod_count;i++){
-        if(mark_symbol(I->prod[i])==a){
-                if(time==1){
-                    time++;
-                }
-                move_dot(I->prod[i], strlen(I->prod[i]));
-                strcpy(S->prod[S->prod_count],I->prod[i]);
-                S->prod_count++;
-        }
-    }
-}
-
-void print_prods(struct state *I){
-    for(int i=0;i<I->prod_count;i++)
-        printf("%s\n",I->prod[i]);
-    cout<<endl;
-}
-
-bool in_array(char a[20],char b){
-    for(int i=0;i<strlen(a);i++)
-        if(a[i]==b)
-            return true;
-    return false;
-}
-
-/*char* chars_after_dots(struct state *I){
-    char a[20]={};
-    for(int i=0;i<I->prod_count;i++){
-        if(!in_array(a,mark_symbol(I->prod[i]))){
-                a[strlen(a)]=mark_symbol(I->prod[i]);
-            }
-    }
-    return &a[0];
-}*/
-
-void cleanup_prods(struct state * I){
-    char a[100]={};
-    for(int i=0;i<I->prod_count;i++)
-        strcpy(I->prod[i],a);
-    I->prod_count=0;
-}
-
-int return_index(char a){
-	if(!isupper(a)) {
-		for(int i=0;i<no_t;i++)
-        	if(terminals[i]==a)
-            	return i;
-	}
-	else {
-		for(int i=0;i<no_nt;i++)
-	        if(non_terminals[i]==a)
-	            return no_t+i;
-	}
-}
-
-void print_shift_table(int state_count){
-    cout<<endl<<"********Shift Actions*********"<<endl<<endl;
-    cout<<"\t";
-    for(int i=0;i<no_t;i++)
-        cout<<terminals[i]<<"\t";
-    for(int i=0;i<no_nt;i++)
-        cout<<non_terminals[i]<<"\t";
-    cout<<endl;
-    for(int i=0;i<state_count;i++){
-        int arr[no_nt+no_t]={-1};
-        for(int j=0;j<state_count;j++){
-            if(goto_table[i][j]!='~'){
-                    arr[return_index(goto_table[i][j])]= j;
-            }
-        }
-        cout<<"I"<<i<<"\t";
-        for(int j=0;j<no_nt+no_t;j++){
-            if(i==1&&j==no_t-1)
-                cout<<"ACC"<<"\t";
-            if(arr[j]==-1||arr[j]==0)
-                cout<<"\t";
-            else{
-            if(j<no_t)
-                cout<<"S"<<arr[j]<<"\t";
-            else
-                cout<<arr[j]<<"\t";
-
-            }
-        }
-        cout<<"\n";
-    }
-}
-
-int get_index(char c,char *a){
-for(int i=0;i<strlen(a);i++)
-    if(a[i]==c)
-    return i;
-}
-
-void add_dot_at_end(struct state* I){
-    for(int i=0;i<I->prod_count;i++){
-        strcat(I->prod[i],".");
-    }
-}
-
-void add_to_first(int n,char b){
-   for(int i=0;i<strlen(first[n]);i++)
-        if(first[n][i]==b)
-            return;
-    first[n][strlen(first[n])]=b;
-}
-
-void add_to_first(int m,int n){
-    for(int i=0;i<strlen(first[n]);i++){
-            int flag=0;
-        for(int j=0;j<strlen(first[m]);j++){
-            if(first[n][i]==first[m][j])
-                flag=1;
-        }
-        if(flag==0)
-            add_to_first(m,first[n][i]);
-    }
-}
-
-void add_to_follow(int n,char b){
-   for(int i=0;i<strlen(follow[n]);i++)
-        if(follow[n][i]==b)
-            return;
-    follow[n][strlen(follow[n])]=b;
-}
-
-void add_to_follow(int m,int n){
-    for(int i=0;i<strlen(follow[n]);i++){
-            int flag=0;
-        for(int j=0;j<strlen(follow[m]);j++){
-            if(follow[n][i]==follow[m][j])
-                flag=1;
-        }
-        if(flag==0)
-            add_to_follow(m,follow[n][i]);
-    }
-}
-
-void add_to_follow_first(int m,int n){
-    for(int i=0;i<strlen(first[n]);i++){
-            int flag=0;
-        for(int j=0;j<strlen(follow[m]);j++){
-            if(first[n][i]==follow[m][j])
-                flag=1;
-        }
-        if(flag==0)
-            add_to_follow(m,first[n][i]);
-    }
-}
-
-void find_first(struct state *I){
-    for(int i=0;i<no_nt;i++){
-        for(int j=0;j<I->prod_count;j++){
-            if(I->prod[j][0]==non_terminals[i]){
-                if(!isupper(I->prod[j][3])){
-                    add_to_first(i,I->prod[j][3]);
-                    }
-
-            }
-        }
-    }
-}
-
-void find_follow(struct state *I){
-    for(int i=0;i<no_nt;i++){
-        for(int j=0;j<I->prod_count;j++){
-            for(int k=3;k<strlen(I->prod[j]);k++){
-                if(I->prod[j][k]==non_terminals[i]){
-                    if(I->prod[j][k+1]!='\0'){
-                        if(!isupper(I->prod[j][k+1])){
-                            add_to_follow(i,I->prod[j][k+1]);
-                        }
-                    }
-                }
-            }
-        }
-    }
-}
-
-int get_index(int *arr,int n){
-    for(int i=0;i<no_t;i++){
-        if(arr[i]==n)
-            return i;
-    }
-    return -1;
-}
-
-void print_reduce_table(int state_count,int *no_re,struct state *temp1){
-    cout<<"**********Reduce actions**********"<<endl<<endl;
-    cout<<"\t";
-    int **arr;
-    arr = new int*[temp1->prod_count+1];
-    for (int i=0; i<temp1->prod_count+1; i++){
-    	arr[i] = new int[no_t+1];
-	}
-    arr[temp1->prod_count][no_t] = -1;
-    for(int i=0;i<no_t;i++){
-        cout<<terminals[i]<<"\t";
-    }
-    cout<<endl;
-    for(int i=0;i<temp1->prod_count;i++){
-	    int n=no_re[i];
-	    for(int j=0;j<strlen(follow[return_index(temp1->prod[i][0])-no_t]);j++){
-	        for(int k=0;k<no_t;k++){
-	            if(follow[return_index(temp1->prod[i][0])-no_t][j]==terminals[k])
-	                arr[i][k]=i+1;
-	        }
-	    }
-	    cout<<"I"<<n<<"\t";
-	    for(int j=0;j<no_t;j++){
-	        if(arr[i][j]!=-1&&arr[i][j]!=0&&arr[i][j]<state_count)
-	            cout<<"R"<<arr[i][j]<<"\t";
-	        else
-	            cout<<"\t";
-	    }
-	    cout<<endl;
-	}
-	for (int i=0; i<temp1->prod_count+1; i++) {
-		delete [] arr[i];
-	}
-	delete [] arr;
-}
 
 int main(){
-    struct state init; // 생성규칙 갯수와 생성규칙 가진 구조체 
-    struct state temp;
-	struct state temp1;
-    int state_count=1;
-    get_prods(&init); // 생성규칙 추가 
-    temp=init;
-    temp1=temp;
-    add_dots(&init); // 생성 규칙 뒤로 한칸 씩 밀고 닷 추가 
+	FILE *f;
+	int l,t1;
+	f = fopen("slr_input.txt","r");
+	char ch;
+	for(i = 0; i < MAX; i++) { 
+		I[i].n = 0; 
+		I[i].last = -1;
+		I[i].lh[0] = '\0'; 
+		I[i].rh[0][0] = '\0'; 
+	}
 
-    for(int i=0;i<100;i++)
-        for(int j=0;j<100;j++)
-            goto_table[i][j]='~'; // goto테이블 ~ 
+	for(i = 0; i < MAX; i++)
+		for(j = 0; j < MAX; j++)
+			slr[i][j][0] = '\0'; 
 
-    struct state I[50];
-    augument(&I[0],&init); // 확장 규칙 Z -> .S , S -> . I[0] 에 적용 
-    closure(&init,&I[0]); // I[0]의 mark symbol이 논터미널이면서 init 규칙에 없다면 추가 
-    cout<<"\nI0:\n";
-    print_prods(&I[0]); // I[0]의 생성규칙들 출력 
+	// Terminal
+	ch = fgetc(f);
+	i = 0;
+	while(ch != '\n'){
+		t[i] = ch;
+		ch = fgetc(f);
+		i++;
+	}
+	t[i++] = EPSILON;
+	t[i] = '\0';
+	n_t = i/*sizeof(t)*/;
 
-    char characters[20]={};
-    bool isend = false;
-    
-    for(int i=0;i<state_count;i++) {
-        char characters[20]={};
-        for(int z=0;z<I[i].prod_count;z++)
-            if(!in_array(characters,mark_symbol(I[i].prod[z]))) {// mark symbol이 없으면 넣어주기 
-            	characters[strlen(characters)] = mark_symbol(I[i].prod[z]);
-            }
-        for(int j=0;j<strlen(characters);j++){
-            goto_state(&I[i],&I[state_count],characters[j]); // characters가 I[i]의 mark symbol이라면 I[i]의 dot을 한칸 옮기고 I[state_count]에 저장 
-            closure(&init,&I[state_count]);	//closure 계산 
-            bool flag = false;
-            for(int k=0;k<state_count-1;k++){
-                if(same_state(&I[k],&I[state_count])){ // 같은 state를 갖나 
-                    cleanup_prods(&I[state_count]); // I[state_count] 초기화 
-					flag = true;
-                    cout<<"I"<<i<<" on reading the symbol "<<characters[j]<<" goes to I"<<k<<".\n";
-                    goto_table[i][k]=characters[j]; // goto_table에 등록 
-                    break;
-                }
-            }
-            
-            if(!flag){ // 같은 state을 갖지 않은 경우
-                cout<<"I"<<i<<" on reading the symbol "<<characters[j]<<" goes to I"<<state_count<<":\n";
-                goto_table[i][state_count]=characters[j]; // goto 테이블 마지막에 추가 
-                print_prods(&I[state_count]); // print 
-                
-                state_count++;
-                
-            }
-        }
-        if(isend) break;
-    }
+	// Non Terminal
+	i = 1;
+	ch = fgetc(f);
+	while(ch != '\n'){
+		nt[i] = ch;
+		ch = fgetc(f);
+		i++;
+	}
+	nt[0] = 'S';
+	nt[i] = '\0';
+	n_nt = i /*sizeof(nt)*/;
 
-    int no_re[temp.prod_count]={-1}; // temp 즉, 본래의 생성규칙의 크기 
-    terminals[no_t]='$'; // $로 시작 
-	no_t++;
+	strcpy(tnt,t);
+	strcat(tnt,nt);
+	n_tnt = strlen(tnt);
 
-    add_dot_at_end(&temp1); // temp1 끝에 . 찍기 
-    for(int i=0;i<state_count;i++){
-        for(int j=0;j<I[i].prod_count;j++)
-            for(int k=0;k<temp1.prod_count;k++)
-                 if(in_state(&I[i],temp1.prod[k]))
-                        no_re[k]=i;
-    }
+	//Start Symbol
+	s = fgetc(f);
 
-    find_first(&temp);
-    for(int l=0;l<no_nt;l++){
-    for(int i=0;i<temp.prod_count;i++){
-        if(isupper(temp.prod[i][3])){
-            add_to_first(return_index(temp.prod[i][0])-no_t,return_index(temp.prod[i][3])-no_t);
-        }
-    }}
+	// Productions
+	ch = fgetc(f);
 
-    find_follow(&temp);
-    add_to_follow(0,'$');
-    for(int l=0;l<no_nt;l++){
-        for(int i=0;i<temp.prod_count;i++){
-            for(int k=3;k<strlen(temp.prod[i]);k++){
-                if(temp.prod[i][k]==non_terminals[l]){
-                        if(isupper(temp.prod[i][k+1])){
-                            add_to_follow_first(l,return_index(temp.prod[i][k+1])-no_t);}
-                        if(temp.prod[i][k+1]=='\0')
-                            add_to_follow(l,return_index(temp.prod[i][0])-no_t);
-                            }
-                    }
-            }
-    }
-    print_shift_table(state_count);
-    cout<<endl<<endl;
-    print_reduce_table(state_count,&no_re[0],&temp1);
+	while(!feof(f)) { 
+		fscanf(f,"%c",&lh[n]); 
+		fscanf(f,"%s\n",rh[n]); 
+		n++; 
+	}
+	fclose(f);
+
+	lh[0] = 'S';
+	rh[0][0] = s;
+	rh[0][1] = '\0';
+
+	printf("Augmented Grammar:\n"); 
+	for(i = 0; i < n; i++) 
+		printf("%d\t%c ==> %s\n",i,lh[i],rh[i]); 
+
+	I[0].lh[0] = lh[0]; 
+	strcpy(I[0].rh[0], ".");
+	strcat(I[0].rh[0], rh[0]); 
+	I[0].n++; 
+
+
+	// state I0
+	l = 0;
+	for(i = 0; i < n; i++) {// n denotes number of production rules
+		temp = I[0].rh[l][1]; 
+		l++; 
+		for(j = 0; j < rr; j++) 
+			if(temp == read[j][0]) 
+				break; 
+		if(j == rr) { 
+			read[rr][0] = temp; 
+			rr++; 
+		} 
+		else 
+			continue; 
+		for(j = 0; j < n ; j++) { 
+			if(lh[j] == temp) { 
+				I[0].rh[I[0].n][0] = '.'; 
+				strcat(I[0].rh[I[0].n], rh[j]); 
+				I[0].lh[I[0].n] = lh[j]; 
+				I[0].n++; 
+			} 
+		} 
+	} 
+	ns++; 
+
+	// print state I0
+	printf("\nI%d:\n",ns-1); 
+	for(i = 0; i < I[0].n; i++) 
+		printf("\t%c ==> %s\n",I[0].lh[i],I[0].rh[i]);
+
+
+	for(l = 0; l < ns; l++) //no of state(I[l])
+		newstate(l);
+
+	
+
+
+
+
+	//first table
+		int **first = new int*[n_nt+1];
+	for (int i=0; i<n_nt+1; i++) {
+		first[i] = new int[n_t+1];
+		memset(first[i], 0, n_t*sizeof(int));
+	}
+	//int first[n_nt][n_t];
+	//memset(first, 0, n_nt*n_t*sizeof(int));
+	int flag, flag2, z, e_index = indexOf(EPSILON,t);
+
+	//calculations for first table
+	do {
+		flag = 0;
+		// For each non terminal
+		for (i = 0; i < n_nt; i++) {
+			// struct p_rules rules = production_rules[i], temp_rules;
+
+			// For each production rule
+			for (j = 0; j < n; j++) {
+				if(lh[j] == nt[i]) {
+					z = 0;
+					next_pos : 
+					k = indexOf(rh[j][z], t);
+					if (k >= 0) {
+						// Terminal
+						if (first[i][k] == 0) {
+							first[i][k] = flag = 1;
+						}
+					}
+					else {
+						// Non terminal
+						k = indexOf(rh[j][z], nt);
+						// temp_rules = production_rules[k];
+						for (l = 0, flag2 = 0; l < n; l++) {
+							if (lh[l] == rh[j][z] && rh[l][0] == EPSILON) {
+								flag2 = 1;
+								break;
+							}
+						}
+						if (flag2) {
+							// Epsilon in 'k'
+							for (l = 0; l < n_t; l++) {
+								if ((first[i][l] == 0) && (first[k][l] == 1)) {
+									first[i][l] = flag = 1;
+								}
+							}
+
+							if (z < strlen(rh[j])) {
+								z++;
+								goto next_pos;
+							}
+						}
+						else {
+							// Epsilon is not in 'k'
+							for (l = 0; l < n_t; l++) {
+								if ((first[i][l] == 0) && (first[k][l] == 1)) {
+									first[i][l] = flag = 1;
+								}
+							}
+						}
+					}
+				}
+			}
+		}
+	} while(flag);
+
+	printf("\nFirst Table:\n");
+
+	printf("\n");
+	for (i = 0; i < n_nt; i++) {
+		printf("%c: ", nt[i]);
+		for (j = 0; j < n_t; j++) {
+			if(first[i][j])
+				printf("%c ", t[j]);
+		}
+		printf("\n");
+	}
+
+	//follow table
+	int follow[n_nt][n_t + 1];
+	int bita, l1;
+	memset(follow, 0, n_nt * (n_t + 1) * sizeof(int));
+	follow[indexOf(lh[0], nt)][n_t] = 1;
+	char *sub1, *sub2;
+
+	//calculations for follow table
+	do {
+		flag = 0;
+		for (i = 0; i < n_nt; i++) {
+			// struct p_rules rules = production_rules[i], temp_rules;
+			// For each production rule
+			for (j = 0; j < n; j++) {
+				if(lh[j] == nt[i]) {
+					// For each character in the rule
+					for (k = 0; k < strlen(rh[j]); k++) {
+						z = indexOf(rh[j][k], nt);
+						if (z < 0) continue;
+
+						// kth element is non terminal
+						sub1 = substr(rh[j], k + 1, strlen(rh[j]));
+						if (strlen(sub1) <= 0) {
+							// follow[i] -> follow[z];
+							for (l = 0; l < n_t + 1; l++) {
+								if (follow[i][l] == 1 && follow[z][l] == 0) follow[z][l] = flag = 1;
+							}
+						}
+						else{
+							flag2 = 0;
+							for (l = 0; l < strlen(sub1); l++) {
+								// first(sub1[l]) -> follow(z)
+								//terminal
+								if((bita = indexOf(sub1[l],t)) >= 0 && l != e_index && follow[z][bita] == 0){
+									follow[z][bita] = flag = 1;
+									break;
+								}
+								//non_terminal
+								else if((bita = indexOf(sub1[l],nt)) >= 0){
+									for (l1 = 0; l1 < n_t; l1++) {
+										if(l1 == e_index){
+											if( first[bita][l1] == 1) flag2 = 1; // epsilon exist
+											continue;
+										}
+										if (first[bita][l1] == 1 && follow[z][l1] == 0) follow[z][l1] = flag = 1;
+									}
+									if(flag2 == 1){
+										for (l1 = 0; l1 < n_t + 1; l1++)
+											if (follow[i][l1] == 1 && follow[z][l1] == 0) follow[z][l1] = flag = 1;
+									}
+									else break;
+								}
+							}
+						}
+					}
+				}
+			}
+		}
+	} while (flag);
+
+
+	printf("\nFollow Table:\n");
+	char follow_char[100];
+	int follow_limit = 0;
+	int follow_print = 0;
+	for (i = 0; i < n_t; i++) {
+		if(i == e_index) continue;
+		printf("\t%c", t[i]);
+		follow_char[follow_limit++] = t[i];
+	}
+	printf("\t$\n");
+	for (i = 0; i < n_nt; i++) {
+		printf("%c:\t", nt[i]);
+		for (j = 0; j < n_t + 1; j++) {
+			
+			if(j == e_index) continue;
+			printf("%d\t", follow[i][j]);
+		}
+		printf("\n");
+	}
+	
+	//reduce
+	e_index = indexOf(EPSILON,t);
+	for(i = 0; i < ns; i++){
+		for(j = 0; j < I[i].n; j++){
+			ptr = strchr(I[i].rh[j],'.'); 
+			t1 = ptr - I[i].rh[j]; // no of chars before '.'
+			if( t1 + 1 == strlen(I[i].rh[j])) {// A->aBb.
+				for(k = 0; k < n; k++){
+					int a = 0, b = 0, q;
+					for (q=0; q<10; q++) 
+						a += I[i].rh[j][q];
+					for (q=0; q<10; q++) 
+						b += rh[k][q];
+					
+					if((a-b) == 46) {
+						I[i].last = k;
+						break;
+					}
+				}
+				continue;
+			} 
+		}
+	}
+
+	for(i = 0; i < ns; i++){
+		if(I[i].last > -1){
+			j = I[i].last;
+			ch = lh[j];
+			for(k = 0; k < n_t + 1; k++){
+				if(k == e_index) continue;
+				if(follow[j][k] == 1){
+					if (k == n_t)
+						k = indexOf('S',tnt);
+						
+					if(j == 0)
+						strcpy(slr[i][k], "Acc");
+					else{
+						strcpy(slr[i][k],"R");
+						sprintf(templ,"%d",j);
+						strcat(slr[i][k],templ); 
+					}
+				}
+			}
+		}
+	}
+	
+
+
+	printf("\nSLR Table\n");
+	for(i = 0; i <= n_tnt; i++)
+		printf("\t%c", tnt[i]);
+	printf("\n");
+	for(i = 0; i < ns; i++){
+		printf("%d\t", i);
+		for(j = 0; j < n_tnt; j++){
+			printf("%s\t", slr[i][j]);
+		}
+		printf("\n");
+	}
 }
-
