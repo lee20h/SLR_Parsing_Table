@@ -1,4 +1,4 @@
-// 201610674 컴퓨터공하부 이영훈 
+// 201610674 컴퓨터공학부 이영훈 
 #include <iostream>
 #include <cstdio>
 #include <cstdlib>
@@ -7,9 +7,10 @@
 #include <cstring>
 using namespace std;
 #define EPSILON '_'
-#define MAX 1000
+#define MAX 100
 
-char lh[MAX], s, t[100], nt[100], tnt[100], _read[MAX][100], temp, templ[MAX], temp2[5], slr[MAX][MAX][6];
+
+char lh[MAX], s, t[100], nt[100], tnt[100], temp_read[MAX][100], temp, templ[MAX], temp2[5], slr[MAX][MAX][6];
 string rh[MAX], tempr[MAX];
 int p,n = 1, ns = 0, rr = 0,n_tnt, tn = 0, n_t, n_nt;
 
@@ -76,7 +77,7 @@ void closure() {
 } 
 
 
-void newstate(int l) {
+void newstate(int l, ostream &AG) {
 	int t1; 
 	char read1[MAX][10],rr1 = 0;
 	char* ptr;
@@ -174,9 +175,17 @@ void newstate(int l) {
 			strcat(slr[l][k],templ);
 		}
 
-		printf("\n\nI%d:",ns); 
-		for(j = 0; j < I[ns].n; j++) 
-			cout << "\n\t" << I[ns].lh[j] << " ==> " << I[ns].rh[j];
+		AG << "\n\nI" << ns << ": "; 
+		for(j = 0; j < I[ns].n; j++)  {
+			AG << "\n\t" << I[ns].lh[j] << " ==> ";
+			for (int k=0; k<I[ns].rh[j].length(); k++) {
+				if(I[ns].rh[j][k] == 'i') 
+					AG << "id";
+				else
+					AG << I[ns].rh[j][k];
+			}
+			AG << '\n';
+		}
 		ns++; 
 		tn = 0; 
 		for(j = 0; j < 15; j++) { 
@@ -190,7 +199,7 @@ void newstate(int l) {
 int main(){
 	ifstream File;
 	int l,t1;
-	File.open("slr_input.txt");
+	File.open("input_grammar.txt");
 	string ch;
 	if(File.fail()) {
 		return 1;
@@ -252,7 +261,7 @@ int main(){
 		if(flag) continue;
 		nt[n_nt++] = lh[i];
 	}
-	nt[0] = 'S';
+	nt[0] = 'Z';
 	nt[n_nt] = '\0';
 	
 	// Terminal
@@ -276,21 +285,21 @@ int main(){
 	File.close();
 	s = lh[1];
 	
-	lh[0] = 'S';
+	lh[0] = 'Z';
 	rh[0] = s;
 	rh[0][1] = '\0';
 
-
-	printf("Augmented Grammar:\n"); 
+	ofstream AG("Augmented-Grammar.txt",ios::ate);
+	AG << "Augmented Grammar:\n";
 	for(int i = 0; i < n; i++) {
-		cout << i << '\t' << lh[i] << " ==> ";
+		AG << i << '\t' << lh[i] << " ==> ";
 		for (int j=0; j<rh[i].length(); j++) {
 			if(rh[i][j] == 'i')
-				cout << "id";
+				AG << "id";
 			else
-				cout << rh[i][j];
+				AG << rh[i][j];
 		}
-		cout << '\n'; 
+		AG << '\n'; 
 	} 
 		
 
@@ -309,11 +318,11 @@ int main(){
 		l++;
 		int j;
 		for(j = 0; j < rr; j++) 
-			if(temp == _read[j][0]) 
+			if(temp == temp_read[j][0]) 
 				break; 
 		
 		if(j == rr) { 
-			_read[rr][0] = temp; 
+			temp_read[rr][0] = temp; 
 			rr++; 
 		} 
 		else 
@@ -329,21 +338,28 @@ int main(){
 	 
 	ns++; 
 	// print state I0
-	printf("\nI%d:\n",ns-1); 
-	for(int i = 0; i < I[0].n; i++) 
-		cout << '\t' << I[0].lh[i] << " ==> " << I[0].rh[i] << '\n';
+	AG << "\nI" << ns-1 << ":\n"; 
+	for(int i = 0; i < I[0].n; i++)  {
+		AG << '\t' << I[0].lh[i] << " ==> ";
+		for (int j=0; j<I[0].rh[i].length(); j++) {
+			if(I[0].rh[i][j] == 'i')
+					AG << "id";
+				else
+					AG << I[0].rh[i][j];
+		}
+		AG << '\n';
+	}
 
 	for(l = 0; l < ns; l++) //no of state(I[l])
-		newstate(l);
-	
+		newstate(l, AG);
+	AG.close();
 
 
 
 
 	//first table
-	int **first = new int*[n_nt];
+	int first[100][100];
 	for (int i=0; i<n_nt; i++) {
-		first[i] = new int[n_t];
 		memset(first[i], 0, n_t*sizeof(int));
 	}
 	int flag, flag2, z, e_index = indexOf(EPSILON,t);
@@ -353,8 +369,6 @@ int main(){
 		flag = 0;
 		// For each non terminal
 		for (int i = 0; i < n_nt; i++) {
-			// struct p_rules rules = production_rules[i], temp_rules;
-
 			// For each production rule
 			for (int j = 0; j < n; j++) {
 				if(lh[j] == nt[i]) {
@@ -369,7 +383,6 @@ int main(){
 					} else {
 						// Non terminal
 						k = indexOf(rh[j][z], nt);
-						// temp_rules = production_rules[k];
 						for (l = 0, flag2 = 0; l < n; l++) {
 							if (lh[l] == rh[j][z] && rh[l][0] == EPSILON) {
 								flag2 = 1;
@@ -401,26 +414,26 @@ int main(){
 			}
 		}
 	} while(flag);
-
-	printf("\nFirst Table:\n");
-
-
-
-	printf("\n");
+	
+	ofstream out("First.txt",ios::ate);
+	out << "First Table :\n";
+	
+	out << '\n';
 	for (int i = 0; i < n_nt; i++) {
-		printf("%c: ", nt[i]);
+		out << nt[i] << ": ";
 		for (int j = 0; j < n_t; j++) {
-			if(first[i][j])
-				printf("%c ", t[j]);
+			if(first[i][j]) {
+				if(t[j] == 'i') out << "id ";
+				else out << t[j] << ' ';
+			}
 		}
-		printf("\n");
+		out << '\n';
 	}
-
+	out.close();
 	//follow table
-	int **follow = new int*[n_nt];
-	for (int i=0; i<n_nt; i++) {
-		follow[i] = new int[n_t+1];
-		memset(follow[i], 0, (n_t+1) * sizeof(int));
+	int follow[100][100];
+	for (int i=0; i<n_t+1; i++) {
+		memset(follow[i], 0, sizeof(follow[i]));
 	}
 	int bita, l1;
 	follow[indexOf(lh[0], nt)][n_t] = 1;
@@ -478,23 +491,26 @@ int main(){
 			}
 		}
 	} while (flag);
-
-
-	printf("\nFollow Table:\n");
-	for (int i = 0; i < n_t; i++) {
-		if(i == e_index) continue;
-		printf("\t%c", t[i]);
-	}
-	printf("\t$\n");
+	ofstream out2("Follow.txt",ios::ate);
+	
+	out2 << "Follow Table:\n";
+	out2 << "\n";
 	for (int i = 0; i < n_nt; i++) {
-		printf("%c:\t", nt[i]);
+		out2 << nt[i] << ":\t";
 		for (int j = 0; j < n_t + 1; j++) {
 			if(j == e_index) continue;
-			printf("%d\t", follow[i][j]);
+			if(j==0)
+				out2 << "$" << "\t";
+			if(follow[i][j]) {
+				if(t[j] == 'i')
+					out2 << "id" << "\t";
+				else
+					out2 << t[j] << "\t";
+			}
 		}
-		printf("\n");
+		out2 << '\n';
 	}
-
+	out2.close();
 	//reduce
 	e_index = indexOf(EPSILON,t);
 	for(int i = 0; i < ns; i++){
@@ -504,10 +520,12 @@ int main(){
 			if(v + 1 == I[i].rh[j].length()) { // A->aBb.
 				for(int k = 0; k < n; k++){
 					int a = 0, b = 0;
-					for (int q=0; q<10; q++)
+					for (int q=0; q<I[i].rh[j].length(); q++){
 						a += I[i].rh[j][q];
-					for (int q=0; q<10; q++)
+					}
+					for (int q=0; q<rh[k].length(); q++) {
 						b += rh[k][q];
+					}
 					if((a-b) == 46){
 						I[i].last = k;
 						break;
@@ -519,14 +537,14 @@ int main(){
 	for(int i = 0; i < ns; i++){
 		if(I[i].last > -1){
 			int j = I[i].last;
+			
 			ch = lh[j];
 			for(int k = 0; k <= n_t; k++){
 				if(k == e_index) continue;
 				if(follow[j][k] == 1){
 					if (k == n_t) {
-						k = indexOf('S',tnt);
+						k = indexOf('Z',tnt);
 					}
-					cout << endl << j << endl;
 					if(j == 0)
 						strcpy(slr[i][k],"ACC");
 					else{
@@ -538,24 +556,22 @@ int main(){
 			}
 		}
 	}
-
-
-	printf("\nDFA Table\n");
-	for(int i = 0; i < n_tnt; i++)
-		printf("\t%c", tnt[i]);
-	printf("\n");
-	for(int i = 0; i < ns; i++){
-		printf("%d\t", i);
-		for(int j = 0; j < n_tnt; j++){
-			printf("%s\t", slr[i][j]);
-		}
-		printf("\n");
-	}
 	
-	for (int i=0; i<n_nt; i++) {
-		delete [] first[i];
-		delete [] follow[i];
+	ofstream out3("SLR-Table.txt",ios::ate);
+	out3 << "SLR Table\n";
+	for(int i = 0; i < n_tnt; i++) {
+		if(tnt[i] == 'i')
+			out3 << "\t" << "id";
+		else
+			out3 << "\t" << tnt[i];
 	}
-	delete [] first;
-	delete [] follow;
+	out3 << '\n';
+	for(int i = 0; i < ns; i++){
+		out3 << i << "\t";
+		for(int j = 0; j < n_tnt; j++){
+			out3 << slr[i][j] << "\t";
+		}
+		out3 << '\n';
+	}
+	out3.close();
 }
