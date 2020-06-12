@@ -1,4 +1,4 @@
-*** SLR Parsing Table  
+### SLR Parsing Table  
 
 input_grammar  
 ex) E ==> T  (only char type)  
