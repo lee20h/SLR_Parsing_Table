@@ -1,4 +1,4 @@
-// 201610674 ÄÄÇ»ÅÍ°øÇĞºÎ ÀÌ¿µÈÆ 
+// 201610674 ì´ì˜í›ˆ
 #include <iostream>
 #include <cstdio>
 #include <cstdlib>
